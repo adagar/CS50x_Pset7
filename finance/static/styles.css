@@ -50,8 +50,27 @@ table{
     margin: auto;
     border: 0;
     border-top-style: none;
+    table-layout:fixed;
 }
 
 .borderless table{
     border: none;
+}
+button .loss-button-text{
+    display: none;
+}
+button .profit-button-text{
+    display: none;
+}
+.btn-success:hover .profit-button-text{
+    display: inline;
+}
+.btn-success:hover .default-button-text{
+    display: none;
+}
+.btn-danger:hover .loss-button-text{
+    display: inline;
+}
+.btn-danger:hover .default-button-text{
+    display: none;
 }

@@ -13,6 +13,6 @@
         </select>
         <label for="shares">Quantity</label>
         <input type="test" name="shares"/>
-        <button class="btn btn-primary" type="submit">Sell</button>
+        <button class="btn {% if v[2] > 0 %} btn-primary{% endif %} btn-warning {% else %}" type="submit">Sell</button>
     </form>
 {% endblock %}

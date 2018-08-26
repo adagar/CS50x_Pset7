@@ -24,7 +24,11 @@
             <td>
                 <form action = "/sell" method="POST">
                     <input type = "hidden" name = "shares" value = "{{ v[0] }}"/>
-                    <button class="btn btn-primary" name="symbol" value="{{ k }}">Sell All</button>
+                    <button class="btn {% if v[2] < v[1] %}btn-success{% else %}btn-danger{% endif %}" name="symbol" value="{{ k }}">
+                        <span class="default-button-text">Sell All</span>
+                        <span class="loss-button-text">LOSS</span>
+                        <span class="profit-button-text">PROFIT</span>
+                    </button>
                 </form>
             </td>
             {% set sumVal =  sumVal + (v[0] * v[1]) %}
