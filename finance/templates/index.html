@@ -6,7 +6,7 @@
 
 {% block main %}
     {% set sumVal = cash %}
-    <table>
+    <table class="table borderless">
         <tr>
             <th>Symbol</th>
             <th>Quantity</th>
@@ -23,7 +23,8 @@
         </tr>
         {% endfor %}
     </table>
-    <table>
+    <hr />
+    <table class="table borderless">
         <tr>
             <th>Cash Balance:</th>
             <th>Total Balance:</th>

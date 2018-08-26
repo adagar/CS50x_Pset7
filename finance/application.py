@@ -38,6 +38,26 @@ Session(app)
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///finance.db")
 
+"""
+Custom content
+"""
+@app.route("/deposit", methods=["GET", "POST"])
+@login_required
+def deposit():
+    """Allow user to deposit more cash"""
+    if request.method != "POST":
+        cash = db.execute("SELECT cash FROM users where id=:userID",
+                                 userID=session["user_id"])[0]["cash"]
+        return render_template("deposit.html", cash=cash)
+    else:
+        try:
+            deposit = float(request.form.get("deposit"))
+        except ValueError:
+            return apology("Invalid deposit", 400)
+
+        db.execute("UPDATE users SET cash = cash + :deposit WHERE id=:userID",
+                           deposit=deposit, userID=session["user_id"])
+        return redirect("/")
 
 @app.route("/")
 @login_required
@@ -57,7 +77,7 @@ def index():
 
     if len(portfolio) != 0:
         for item in portfolio:
-            totalStockVal += lookup(item)["price"]
+            totalStockVal += lookup(item)["price"] * portfolio[item][0]
 
     return render_template("index.html", portfolio=portfolio, cash=cash, totalStockVal=totalStockVal)
 

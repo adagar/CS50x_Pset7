@@ -48,4 +48,10 @@ main img
 
 table{
     margin: auto;
+    border: 0;
+    border-top-style: none;
+}
+
+.borderless table{
+    border: none;
 }

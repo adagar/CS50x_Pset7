@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Deposit Cash
+{% endblock %}
+
+{% block main %}
+    <div class = "container">
+        <div class="row">
+            <div class="col">
+                <table class="table borderless">
+                    <tr>
+                        <th>Cash Balance:</th>
+                    </tr>
+                    <tr>
+                        <td>{{ cash | usd }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col">
+                <table>
+                    <form action = "/deposit" method="POST">
+                        <tr>
+                            <td><label for="deposit">Deposit Amount:</label></td>
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="deposit"/></td>
+                        </tr>
+                        <tr>
+                            <td><button class="btn btn-primary" type="submit">Deposit</button></td>
+                        </tr>
+
+                    </form>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+
+{% endblock %}
