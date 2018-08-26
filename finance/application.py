@@ -40,14 +40,67 @@ db = SQL("sqlite:///finance.db")
 @login_required
 def index():
     """Show portfolio of stocks"""
-    return apology("TODO")
+    #get username
+    rows = db.execute("SELECT * FROM users WHERE id = :userID",
+                          userID=session["user_id"])
+    username = rows[0]["username"]
+    cash = int(rows[0]["cash"])
+    #get all transactions for this user
+    rows = db.execute("SELECT * FROM users WHERE id = :userID",
+                          userID=session["user_id"])
+    userTransactions = db.execute("SELECT * FROM transactions where purchasing_user = :username", username=username)
+
+    #turn transactions into clean portfolio
+    portfolio = {}
+    totalStockVal = 0
+
+    for transaction in userTransactions:
+        symbol = transaction["symbol"]
+        if symbol in portfolio:
+            portfolio[symbol][0] += transaction["quantity"]
+        else:
+            portfolio[symbol] = [transaction["quantity"], lookup(symbol)["price"]]
+        totalStockVal += lookup(symbol)["price"] * transaction["quantity"]
+
+
+    return render_template("index.html", portfolio=portfolio, cash=cash, totalStockVal=totalStockVal)
 
 
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
 def buy():
     """Buy shares of stock"""
-    return apology("TODO")
+    if request.method == "POST":
+        symbolRequest = request.form.get("symbol")
+        quantity = int(request.form.get("quantity"))
+
+        stockInfo = lookup(symbolRequest)
+        cleanPrice = int(stockInfo["price"])
+        cleanSymbol = stockInfo["symbol"]
+
+        totalCost = cleanPrice * quantity
+        #check if user can afford it
+        #Look up user
+        rows = db.execute("SELECT * FROM users WHERE id = :userID",
+                          userID=session["user_id"])
+        #get their cash balance
+        cashBalance = rows[0]["cash"]
+        username = rows[0]["username"]
+        #print(cashBalance)
+            #if they can afford
+        if totalCost < cashBalance:
+            print(cashBalance - totalCost)
+            #create a transaction
+            db.execute("INSERT INTO transactions(purchasing_user, symbol, value, quantity) VALUES(:username, :cleanSymbol, :cleanPrice, :quantity)", username=username, cleanSymbol=cleanSymbol, cleanPrice=cleanPrice, quantity=quantity)
+            #update user cash
+            db.execute("UPDATE users SET cash = cash - :totalCost WHERE id = :userID", totalCost = totalCost, userID = session["user_id"])
+
+        else:
+            return apology("you can't afford that", 403)
+
+        return redirect("/")
+    else:
+        return render_template("buy.html")
 
 
 @app.route("/history")
@@ -101,7 +154,7 @@ def logout():
     # Forget any user_id
     session.clear()
 
-    # Redirect user to login form
+    # Redirect user to login form render_template("display.html")
     return redirect("/")
 
 
@@ -109,20 +162,89 @@ def logout():
 @login_required
 def quote():
     """Get stock quote."""
-    return apology("TODO")
+    q = request.args.get("symbol")
+    print(q)
+    if request.method == "GET" and q:
+        stockInfo = lookup(q)
+        return render_template("display.html", symbol=stockInfo)
+    else:
+        return render_template("quote.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-    return apology("TODO")
+    session.clear()
+
+    if request.method == "POST":
+        #check for username
+        if not request.form.get("username"):
+            return apology("must provide username", 403)
+
+        #check for password field
+        elif not request.form.get("password"):
+            return apology("must provide password", 403)
+
+        #check for matching password field
+        elif request.form.get("password") != request.form.get("confirmation"):
+            return apology("password confirmation must match", 403)
+
+        #username must be unique
+        elif len(db.execute("SELECT * FROM users WHERE username = :username", username=request.form.get("username"))) > 0:
+            return apology("username is taken")
+
+        print("Form seems good!")
+        #add username to database
+        hash = generate_password_hash(request.form.get("password"))
+        db.execute("INSERT INTO users(username, hash) VALUES(:username, :hash)", username = request.form.get("username"), hash=hash)
+
+        #query that new user
+        # Query database for username
+        rows = db.execute("SELECT * FROM users WHERE username = :username", username=request.form.get("username"))
+
+        #remember that user has logged in
+        session["user_id"] = rows[0]["id"]
+
+        #redirect to home page
+        return redirect("/")
+    else:
+        return render_template("register.html")
 
 
 @app.route("/sell", methods=["GET", "POST"])
 @login_required
 def sell():
     """Sell shares of stock"""
-    return apology("TODO")
+    if request.method == "POST":
+        symbolRequest = request.form.get("symbol")
+        quantity = int(request.form.get("quantity")) * -1
+
+        username = db.execute("SELECT username FROM users WHERE id=:userID", userID=session["user_id"])[0]['username']
+        #username = username['username']
+        stockInfo = lookup(symbolRequest)
+        cleanPrice = int(stockInfo["price"])
+        cleanSymbol = stockInfo["symbol"]
+
+        totalSalesPrice = cleanPrice * quantity
+        print(quantity)
+        #check if user can afford it
+        #Look up user
+        print(f"{username} wants to sell {quantity} of {cleanSymbol} for {totalSalesPrice}")
+        ownedQuantityStock = db.execute("SELECT SUM(quantity) FROM transactions WHERE purchasing_user = :username AND symbol = :symbol", username=username, symbol=cleanSymbol)[0]['SUM(quantity)']
+
+        if abs(quantity) <= ownedQuantityStock:
+            #create a transaction
+            db.execute("INSERT INTO transactions(purchasing_user, symbol, value, quantity) VALUES(:username, :cleanSymbol, :cleanPrice, :quantity)", username=username, cleanSymbol=cleanSymbol, cleanPrice=cleanPrice, quantity=quantity)
+            #update user cash
+            db.execute("UPDATE users SET cash = cash - :totalSalesPrice WHERE id = :userID", totalSalesPrice = totalSalesPrice, userID = session["user_id"])
+
+        else:
+            return apology("you don't have that many", 403)
+
+        return redirect("/")
+    else:
+        return render_template("sell.html")
+
 
 
 def errorhandler(e):

@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Buy Stocks
+{% endblock %}
+
+{% block main %}
+    <form action = "/sell" method="POST">
+        <label for="symbol">Symbol</label>
+        <input type="text" autofocus class="form-control" name="symbol"/>
+        <label for="quantity">Quantity</label>
+        <input type="number" class="form-control" name="quantity" min="0" step="1"/>
+        <input type="submit">
+    </form>
+{% endblock %}

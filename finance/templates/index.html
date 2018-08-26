@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Homepage
+{% endblock %}
+
+{% block main %}
+    {% set sumVal = cash %}
+    <table>
+        <tr>
+            <th>Symbol</th>
+            <th>Quantity</th>
+            <th>Current Value</th>
+            <th>Total Value</th>
+        </tr>
+        {% for k,v in portfolio.items() %}
+        <tr>
+            <td>{{ k }}</td>
+            <td>{{ v[0] }}</td>
+            <td>{{ v[1] }}</td>
+            <td>{{ v[0] * v[1] }}</td>
+            {% set sumVal =  sumVal + (v[0] * v[1]) %}
+        </tr>
+        {% endfor %}
+    </table>
+    <table>
+        <tr>
+            <th>Cash Balance:</th>
+            <th>Total Balance:</th>
+        </tr>
+        <tr>
+            <td>{{ cash }}</td>
+            <td>{{ cash + totalStockVal }}</td>
+        </tr>
+    </table>
+{% endblock %}
