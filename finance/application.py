@@ -16,12 +16,15 @@ app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # Ensure responses aren't cached
+
+
 @app.after_request
 def after_request(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Expires"] = 0
     response.headers["Pragma"] = "no-cache"
     return response
+
 
 # Custom filter
 app.jinja_env.filters["usd"] = usd
@@ -40,28 +43,21 @@ db = SQL("sqlite:///finance.db")
 @login_required
 def index():
     """Show portfolio of stocks"""
-    #get username
-    rows = db.execute("SELECT * FROM users WHERE id = :userID",
+    # get username
+    userInfo = db.execute("SELECT * FROM users WHERE id = :userID",
                           userID=session["user_id"])
-    username = rows[0]["username"]
-    cash = int(rows[0]["cash"])
-    #get all transactions for this user
-    rows = db.execute("SELECT * FROM users WHERE id = :userID",
-                          userID=session["user_id"])
-    userTransactions = db.execute("SELECT * FROM transactions where purchasing_user = :username", username=username)
+    cash = int(userInfo[0]["cash"])
+    # get all transactions for this user
+    userTransactions = db.execute("SELECT * FROM transactions where userID = :userID",
+                                  userID=session["user_id"])
 
-    #turn transactions into clean portfolio
-    portfolio = {}
-    totalStockVal = 0
+    # turn transactions into clean portfolio
+    portfolio = GetUserStocks()
+    totalStockVal = 0.0
 
-    for transaction in userTransactions:
-        symbol = transaction["symbol"]
-        if symbol in portfolio:
-            portfolio[symbol][0] += transaction["quantity"]
-        else:
-            portfolio[symbol] = [transaction["quantity"], lookup(symbol)["price"]]
-        totalStockVal += lookup(symbol)["price"] * transaction["quantity"]
-
+    if len(portfolio) != 0:
+        for item in portfolio:
+            totalStockVal += lookup(item)["price"]
 
     return render_template("index.html", portfolio=portfolio, cash=cash, totalStockVal=totalStockVal)
 
@@ -72,31 +68,40 @@ def buy():
     """Buy shares of stock"""
     if request.method == "POST":
         symbolRequest = request.form.get("symbol")
-        quantity = int(request.form.get("quantity"))
+        # print(request.form.get("shares"))
+        try:
+            quantity = float(request.form.get("shares"))
+        except ValueError:
+            return apology("Invalid quantity", 400)
+        if quantity < 0 or quantity % 1 != 0:
+            return apology("Invalid quantity", 400)
 
         stockInfo = lookup(symbolRequest)
-        cleanPrice = int(stockInfo["price"])
-        cleanSymbol = stockInfo["symbol"]
+        if stockInfo != None and len(stockInfo) != 0:
+            cleanPrice = int(stockInfo["price"])
+            cleanSymbol = stockInfo["symbol"]
 
-        totalCost = cleanPrice * quantity
-        #check if user can afford it
-        #Look up user
-        rows = db.execute("SELECT * FROM users WHERE id = :userID",
-                          userID=session["user_id"])
-        #get their cash balance
-        cashBalance = rows[0]["cash"]
-        username = rows[0]["username"]
-        #print(cashBalance)
-            #if they can afford
-        if totalCost < cashBalance:
-            print(cashBalance - totalCost)
-            #create a transaction
-            db.execute("INSERT INTO transactions(purchasing_user, symbol, value, quantity) VALUES(:username, :cleanSymbol, :cleanPrice, :quantity)", username=username, cleanSymbol=cleanSymbol, cleanPrice=cleanPrice, quantity=quantity)
-            #update user cash
-            db.execute("UPDATE users SET cash = cash - :totalCost WHERE id = :userID", totalCost = totalCost, userID = session["user_id"])
+            totalCost = cleanPrice * quantity
+            # check if user can afford it
+            # Look up user
+            userData = db.execute("SELECT * FROM users WHERE id = :userID", userID=session["user_id"])
+            # get their cash balance
+            cashBalance = userData[0]["cash"]
+            # print(cashBalance)
+            # if they can afford
+            if totalCost < cashBalance:
+                # print(cashBalance - totalCost)
+                # create a transaction
+                db.execute("INSERT INTO transactions(userID, symbol, value, quantity) VALUES(:userID, :cleanSymbol, :cleanPrice, :quantity)",
+                           userID=session["user_id"], cleanSymbol=cleanSymbol, cleanPrice=cleanPrice, quantity=quantity)
+                # update user cash
+                db.execute("UPDATE users SET cash = cash - :totalCost WHERE id=:userID",
+                           totalCost=totalCost, userID=session["user_id"])
 
+            else:
+                return apology("you can't afford that", 403)
         else:
-            return apology("you can't afford that", 403)
+            return apology("Invalid stock choice", 400)
 
         return redirect("/")
     else:
@@ -107,7 +112,8 @@ def buy():
 @login_required
 def history():
     """Show history of transactions"""
-    return apology("TODO")
+    actions = db.execute("SELECT * FROM transactions where userID = :userID", userID=session["user_id"])
+    return render_template("history.html", actions=actions)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -122,11 +128,11 @@ def login():
 
         # Ensure username was submitted
         if not request.form.get("username"):
-            return apology("must provide username", 403)
+            return apology("must provide username", 400)
 
         # Ensure password was submitted
         elif not request.form.get("password"):
-            return apology("must provide password", 403)
+            return apology("must provide password", 400)
 
         # Query database for username
         rows = db.execute("SELECT * FROM users WHERE username = :username",
@@ -162,11 +168,14 @@ def logout():
 @login_required
 def quote():
     """Get stock quote."""
-    q = request.args.get("symbol")
-    print(q)
-    if request.method == "GET" and q:
+
+    if request.method == "POST":
+        q = request.form.get("symbol")
         stockInfo = lookup(q)
-        return render_template("display.html", symbol=stockInfo)
+        if stockInfo != None and len(stockInfo) != 0:
+            return render_template("display.html", symbol=stockInfo)
+        else:
+            return apology("must provide valid symbol", 400)
     else:
         return render_template("quote.html")
 
@@ -177,35 +186,37 @@ def register():
     session.clear()
 
     if request.method == "POST":
-        #check for username
+        # check for username
         if not request.form.get("username"):
-            return apology("must provide username", 403)
+            return apology("must provide username", 400)
 
-        #check for password field
+        # check for password field
         elif not request.form.get("password"):
-            return apology("must provide password", 403)
+            return apology("must provide password", 400)
 
-        #check for matching password field
+        # check for matching password field
         elif request.form.get("password") != request.form.get("confirmation"):
-            return apology("password confirmation must match", 403)
+            return apology("password confirmation must match", 400)
 
-        #username must be unique
-        elif len(db.execute("SELECT * FROM users WHERE username = :username", username=request.form.get("username"))) > 0:
+        # username must be unique
+        elif len(db.execute("SELECT * FROM users WHERE username = :username",
+                            username=request.form.get("username"))) > 0:
             return apology("username is taken")
 
-        print("Form seems good!")
-        #add username to database
+        # print("Form seems good!")
+        # add username to database
         hash = generate_password_hash(request.form.get("password"))
-        db.execute("INSERT INTO users(username, hash) VALUES(:username, :hash)", username = request.form.get("username"), hash=hash)
+        db.execute("INSERT INTO users(username, hash) VALUES(:username, :hash)",
+                   username=request.form.get("username"), hash=hash)
 
-        #query that new user
+        # query that new user
         # Query database for username
         rows = db.execute("SELECT * FROM users WHERE username = :username", username=request.form.get("username"))
 
-        #remember that user has logged in
+        # remember that user has logged in
         session["user_id"] = rows[0]["id"]
 
-        #redirect to home page
+        # redirect to home page
         return redirect("/")
     else:
         return render_template("register.html")
@@ -216,35 +227,43 @@ def register():
 def sell():
     """Sell shares of stock"""
     if request.method == "POST":
-        symbolRequest = request.form.get("symbol")
-        quantity = int(request.form.get("quantity")) * -1
 
-        username = db.execute("SELECT username FROM users WHERE id=:userID", userID=session["user_id"])[0]['username']
-        #username = username['username']
+        # get user stocks
+        portfolio = GetUserStocks()
+        # turn them into a list
+        # get quantity sold
+        # confirm its an integer
+        # sell
+        symbolRequest = request.form.get("symbol")
+        quantity = int(request.form.get("shares")) * -1
+
+        # username = username['username']
         stockInfo = lookup(symbolRequest)
         cleanPrice = int(stockInfo["price"])
         cleanSymbol = stockInfo["symbol"]
 
         totalSalesPrice = cleanPrice * quantity
-        print(quantity)
-        #check if user can afford it
-        #Look up user
-        print(f"{username} wants to sell {quantity} of {cleanSymbol} for {totalSalesPrice}")
-        ownedQuantityStock = db.execute("SELECT SUM(quantity) FROM transactions WHERE purchasing_user = :username AND symbol = :symbol", username=username, symbol=cleanSymbol)[0]['SUM(quantity)']
+        # print(quantity)
+        # check if user can afford it
+        # Look up user
+        ownedQuantityStock = db.execute("SELECT SUM(quantity) FROM transactions WHERE userID = :userID AND symbol = :symbol",
+                                        userID=session["user_id"], symbol=cleanSymbol)[0]['SUM(quantity)']
 
         if abs(quantity) <= ownedQuantityStock:
-            #create a transaction
-            db.execute("INSERT INTO transactions(purchasing_user, symbol, value, quantity) VALUES(:username, :cleanSymbol, :cleanPrice, :quantity)", username=username, cleanSymbol=cleanSymbol, cleanPrice=cleanPrice, quantity=quantity)
-            #update user cash
-            db.execute("UPDATE users SET cash = cash - :totalSalesPrice WHERE id = :userID", totalSalesPrice = totalSalesPrice, userID = session["user_id"])
+            # create a transaction
+            db.execute("INSERT INTO transactions(userID, symbol, value, quantity) VALUES(:userID, :cleanSymbol, :cleanPrice, :quantity)",
+                       userID=session["user_id"], cleanSymbol=cleanSymbol, cleanPrice=cleanPrice, quantity=quantity)
+            # update user cash
+            db.execute("UPDATE users SET cash = cash - :totalSalesPrice WHERE id = :userID",
+                       totalSalesPrice=totalSalesPrice, userID=session["user_id"])
 
         else:
-            return apology("you don't have that many", 403)
+            return apology("you don't have that many", 400)
 
         return redirect("/")
     else:
-        return render_template("sell.html")
-
+        portfolio = GetUserStocks()
+        return render_template("sell.html", portfolio=portfolio)
 
 
 def errorhandler(e):
@@ -255,3 +274,22 @@ def errorhandler(e):
 # listen for errors
 for code in default_exceptions:
     app.errorhandler(code)(errorhandler)
+
+
+def GetUserStocks():
+    userTransactions = db.execute("SELECT * FROM transactions where userID = :userID",
+                                  userID=session["user_id"])
+
+    # turn transactions into clean portfolio
+    portfolio = {}
+
+    for transaction in userTransactions:
+        symbol = transaction["symbol"]
+        if symbol in portfolio:
+            portfolio[symbol][0] += transaction["quantity"]
+            if portfolio[symbol][0] == 0:
+                del portfolio[symbol]
+        else:
+            portfolio[symbol] = [transaction["quantity"], lookup(symbol)["price"]]
+
+    return portfolio

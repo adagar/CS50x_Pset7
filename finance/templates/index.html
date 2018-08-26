@@ -17,8 +17,8 @@
         <tr>
             <td>{{ k }}</td>
             <td>{{ v[0] }}</td>
-            <td>{{ v[1] }}</td>
-            <td>{{ v[0] * v[1] }}</td>
+            <td>{{ v[1] | usd }}</td>
+            <td>{{ (v[0] * v[1]) | usd }}</td>
             {% set sumVal =  sumVal + (v[0] * v[1]) %}
         </tr>
         {% endfor %}
@@ -29,8 +29,8 @@
             <th>Total Balance:</th>
         </tr>
         <tr>
-            <td>{{ cash }}</td>
-            <td>{{ cash + totalStockVal }}</td>
+            <td>{{ cash | usd }}</td>
+            <td>{{ (cash + totalStockVal) | usd }}</td>
         </tr>
     </table>
 {% endblock %}

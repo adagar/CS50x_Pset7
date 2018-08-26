@@ -1,0 +1,29 @@
+app.jinja_env.globals.update(clever_function=clever_function)
+
+{% extends "layout.html" %}
+
+{% block title %}
+    Homepage
+{% endblock %}
+
+{% block main %}
+    {% set sumVal = cash %}
+    <table>
+        <tr>
+            <th>Action</th>
+            <th>Symbol</th>
+            <th>Quantity</th>
+            <th>Purchased/Sold Value</th>
+            <th>Date</th>
+        </tr>
+        {% for action in actions %}
+        <tr>
+            <td>BUY</td>
+            <td>{{ action['symbol'] }}</td>
+            <td>{{ action['quantity'] }}</td>
+            <td>{{ action['value'] | usd }}</td>
+            <td>{{ action['purchase_time'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

@@ -6,10 +6,13 @@
 
 {% block main %}
     <form action = "/sell" method="POST">
-        <label for="symbol">Symbol</label>
-        <input type="text" autofocus class="form-control" name="symbol"/>
-        <label for="quantity">Quantity</label>
-        <input type="number" class="form-control" name="quantity" min="0" step="1"/>
-        <input type="submit">
+        <select name="symbol">
+            {% for k,v in portfolio.items() %}
+            <option value={{ k }}>{{ k }}</option>
+            {% endfor %}
+        </select>
+        <label for="shares">Quantity</label>
+        <input type="test" name="shares"/>
+        <button class="btn btn-primary" type="submit">Sell</button>
     </form>
 {% endblock %}

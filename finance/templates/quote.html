@@ -6,8 +6,9 @@
 
 
 {% block main %}
-    <form action = "/quote" method="GET">
+    <form action = "/quote" method="POST">
         <label for="symbol">Symbol</label>
         <input type="text" autofocus class="form-control" name="symbol"/>
+        <button class="btn btn-primary" type="submit">Submit</button>
     </form>
 {% endblock %}
