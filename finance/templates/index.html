@@ -12,6 +12,7 @@
             <th>Quantity</th>
             <th>Current Value</th>
             <th>Total Value</th>
+            <th>Average Paid</th>
         </tr>
         {% for k,v in portfolio.items() %}
         <tr>
@@ -19,6 +20,7 @@
             <td>{{ v[0] }}</td>
             <td>{{ v[1] | usd }}</td>
             <td>{{ (v[0] * v[1]) | usd }}</td>
+            <td>{{ (v[2]) | usd }}</td>
             <td>
                 <form action = "/sell" method="POST">
                     <input type = "hidden" name = "shares" value = "{{ v[0] }}"/>
