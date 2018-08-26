@@ -19,6 +19,12 @@
             <td>{{ v[0] }}</td>
             <td>{{ v[1] | usd }}</td>
             <td>{{ (v[0] * v[1]) | usd }}</td>
+            <td>
+                <form action = "/sell" method="POST">
+                    <input type = "hidden" name = "shares" value = "{{ v[0] }}"/>
+                    <button class="btn btn-primary" name="symbol" value="{{ k }}">Sell All</button>
+                </form>
+            </td>
             {% set sumVal =  sumVal + (v[0] * v[1]) %}
         </tr>
         {% endfor %}
